@@ -21,21 +21,37 @@ import telebot
 import torch
 
 
+private_vars = {
+    "TG_POMOSHNIK_BOT_TOKEN": '6711078506:AAEjfqoyqQvM-9dcEitHnua1a6lwIrAD0Z8',
+    "URL_VECTORISATION": "http://ext-delivery-bert-cl1.dl.wb.ru:8081/vector",
+    "URL_GET_ANSWER": "https://bert.wb.ru/api/get-answer",
+    "URL_LLM": 'http://ext-delivery-search-llm-02.el.wb.ru:8082/generate_answer_without_prompt',
+    "URL_SCORE_ANSWER": "https://bert.wb.ru/api/score-answer",
+    "GET_ANSWER_X_TOKEN": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiIzOTA2NjM6Mjc3ZTFmNDNmM2UyNDhlMCIsInVpZCI6MzkwNjYzLCJ3dWlkIjo2MzI5MTMzOSwicGlkIjowLCJ4cGlkIjowLCJzIjowLCJyIjpbNF0sImFkbWluIjp0cnVlLCJhZG1pbl9yb2xlcyI6WyJhZG1pbiIsImludGVybmFsIl0sImlzX3JlZnJlc2giOmZhbHNlLCJyZWZyZXNoX2tleSI6IiIsImNvdW50cnkiOiIiLCJhcGlkcyI6bnVsbCwiZWFwaWRzIjpudWxsLCJ1c2hzIjpudWxsLCJ2ZXJzaW9uIjoxLCJkZXZpY2VfdXVpZCI6IjAwMThjMzljMzg4ZWVlMTA1YmVkOTA3ZDkzYzg1ZWFiIiwiZXhwIjoxNjk2NzcwOTgyLCJpYXQiOjE2OTU5MDY5ODJ9.Q6sCYNy1TbUwlzm0b7g0zCHVa3ug8HwLlLPJFF5eP5mbphGuY9l165XpJ0LFMSrw_uFPOpzJMlDrddb1Yi-X1hbO2oauu0sOWS7qsEsuhaweWPxlVFrzlJNdiF1CETiSb8zdjYXavS-ELYz_B_VaTtLiTVmtlo_bAgMwm7uNROOYMX6kxtt1COGV9xTLYYiUAlvbDNW-IDf3jKFypMMxBEDyJRUYUPGXMNGOt2jVhaXFZXDP0sHKXf6mj0rEX5ACRgGRMAwYf_WfZC_ZXGCcSUBEGtVNolKIPUvrFj0JszTJhfIDj-YL0O3RWmQ90TifMEoVkxO0mW8LrNXaEBCTgA",
+    "GET_SCORE_X_TOKEN": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiIzOTA2NjM6Mjc3ZTFmNDNmM2UyNDhlMCIsInVpZCI6MzkwNjYzLCJ3dWlkIjo2MzI5MTMzOSwicGlkIjowLCJ4cGlkIjowLCJzIjowLCJyIjpbNF0sImFkbWluIjp0cnVlLCJhZG1pbl9yb2xlcyI6WyJhZG1pbiIsImludGVybmFsIl0sImlzX3JlZnJlc2giOmZhbHNlLCJyZWZyZXNoX2tleSI6IiIsImNvdW50cnkiOiIiLCJhcGlkcyI6bnVsbCwiZWFwaWRzIjpudWxsLCJ1c2hzIjpudWxsLCJ2ZXJzaW9uIjoxLCJkZXZpY2VfdXVpZCI6IjAwMThjMzljMzg4ZWVlMTA1YmVkOTA3ZDkzYzg1ZWFiIiwiZXhwIjoxNjk2NzcwOTgyLCJpYXQiOjE2OTU5MDY5ODJ9.Q6sCYNy1TbUwlzm0b7g0zCHVa3ug8HwLlLPJFF5eP5mbphGuY9l165XpJ0LFMSrw_uFPOpzJMlDrddb1Yi-X1hbO2oauu0sOWS7qsEsuhaweWPxlVFrzlJNdiF1CETiSb8zdjYXavS-ELYz_B_VaTtLiTVmtlo_bAgMwm7uNROOYMX6kxtt1COGV9xTLYYiUAlvbDNW-IDf3jKFypMMxBEDyJRUYUPGXMNGOt2jVhaXFZXDP0sHKXf6mj0rEX5ACRgGRMAwYf_WfZC_ZXGCcSUBEGtVNolKIPUvrFj0JszTJhfIDj-YL0O3RWmQ90TifMEoVkxO0mW8LrNXaEBCTgA",
+    "DB_USER": "bert",
+    "DB_PASSWORD": "b6d8n1MD6ULsjmWo4PhToB2aU5QsKDCz",
+    "DB_HOST": "ext-delivery-bert-pgsql-cl1-haproxy.ext-delivery.svc.k8s.prod-dl",
+    "DB_DATABASE_NAME": "bert",
+    "DB_PORT_WRITE": "5000"
+}
+
+
 # Model init
 DEFAULT_MESSAGE_TEMPLATE = "<s>{role}\n{content}</s>"
 DEFAULT_RESPONSE_TEMPLATE = "<s>bot\n"
 DEFAULT_SYSTEM_PROMPT = "Ты — PointGPT, русскоязычный автоматический ассистент. Ты разговариваешь с людьми и помогаешь им."
 
 # Private data
-TOKEN = private_vars['6711078506:AAEjfqoyqQvM-9dcEitHnua1a6lwIrAD0Z8']
-URL_VECTORISATION = private_vars['http://ext-delivery-bert-cl1.dl.wb.ru:8081/vector']
-URL_SCORE_ANSWER = private_vars['https://bert.wb.ru/api/score-answer']
-URL_LLM = private_vars['http://ext-delivery-search-llm-02.el.wb.ru:8082/generate_answer_without_prompt']
+TOKEN = private_vars['TG_POMOSHNIK_BOT_TOKEN']
+URL_VECTORISATION = private_vars['URL_VECTORISATION']
+URL_SCORE_ANSWER = private_vars['URL_SCORE_ANSWER']
+URL_LLM = private_vars['URL_LLM']
 
 
 # headers for URL_SCORE_ANSWER
 headers_get_score = {
-    'x-token': private_vars['eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaWQiOiIzOTA2NjM6Mjc3ZTFmNDNmM2UyNDhlMCIsInVpZCI6MzkwNjYzLCJ3dWlkIjo2MzI5MTMzOSwicGlkIjowLCJ4cGlkIjowLCJzIjowLCJyIjpbNF0sImFkbWluIjp0cnVlLCJhZG1pbl9yb2xlcyI6WyJhZG1pbiIsImludGVybmFsIl0sImlzX3JlZnJlc2giOmZhbHNlLCJyZWZyZXNoX2tleSI6IiIsImNvdW50cnkiOiIiLCJhcGlkcyI6bnVsbCwiZWFwaWRzIjpudWxsLCJ1c2hzIjpudWxsLCJ2ZXJzaW9uIjoxLCJkZXZpY2VfdXVpZCI6IjAwMThjMzljMzg4ZWVlMTA1YmVkOTA3ZDkzYzg1ZWFiIiwiZXhwIjoxNjk2NzcwOTgyLCJpYXQiOjE2OTU5MDY5ODJ9.Q6sCYNy1TbUwlzm0b7g0zCHVa3ug8HwLlLPJFF5eP5mbphGuY9l165XpJ0LFMSrw_uFPOpzJMlDrddb1Yi-X1hbO2oauu0sOWS7qsEsuhaweWPxlVFrzlJNdiF1CETiSb8zdjYXavS-ELYz_B_VaTtLiTVmtlo_bAgMwm7uNROOYMX6kxtt1COGV9xTLYYiUAlvbDNW-IDf3jKFypMMxBEDyJRUYUPGXMNGOt2jVhaXFZXDP0sHKXf6mj0rEX5ACRgGRMAwYf_WfZC_ZXGCcSUBEGtVNolKIPUvrFj0JszTJhfIDj-YL0O3RWmQ90TifMEoVkxO0mW8LrNXaEBCTgA'],
+    'x-token': private_vars['GET_SCORE_X_TOKEN'],
     'Content-Type': 'application/json'
 }
 
@@ -57,11 +73,11 @@ class Connection:
     def __init__(self):
         # Initializaion
         self.conn = psycopg2.connect(
-            host=private_vars['ext-delivery-bert-pgsql-cl1-haproxy.ext-delivery.svc.k8s.prod-dl'],
-            port=private_vars['5000'],
-            database=private_vars['bert'],
-            user=private_vars['bert'],
-            password=private_vars['b6d8n1MD6ULsjmWo4PhToB2aU5QsKDCz'],
+            host=private_vars['DB_HOST'],
+            port=private_vars['DB_PORT_WRITE'],
+            database=private_vars['DB_DATABASE_NAME'],
+            user=private_vars['DB_USER'],
+            password=private_vars['DB_PASSWORD'],
             sslmode="disable"
         )
         self.curr = self.conn.cursor()
