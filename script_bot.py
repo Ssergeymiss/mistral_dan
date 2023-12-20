@@ -409,9 +409,8 @@ def handle_button_click(call):
             print(f'Problems with {user_id}, {question_id}, {answer_id} -- get_score_request()')
 
 
-bot.polling()
+#bot.polling()
 
-"""
 # Start bot
 while True:
     try:
@@ -420,4 +419,4 @@ while True:
         conversations = {}
         print(e)
         sleep(5)
-"""
+
