@@ -22,7 +22,7 @@ import torch
 
 
 private_vars = {
-    "TG_POMOSHNIK_BOT_TOKEN": '6711078506:AAEjfqoyqQvM-9dcEitHnua1a6lwIrAD0Z8',
+    "TG_POMOSHNIK_BOT_TOKEN": '6836506185:AAEAvwcZEniKjOdvgsTnqPlJ-qQPMn9i2Mc',
     "URL_VECTORISATION": "http://ext-delivery-bert-cl1.dl.wb.ru:8081/vector",
     "URL_GET_ANSWER": "https://bert.wb.ru/api/get-answer",
     "URL_LLM": 'http://ext-delivery-search-llm-02.el.wb.ru:8082/generate_answer_without_prompt',
@@ -376,9 +376,9 @@ def handle_button_click(call):
             print(f'Problems with {user_id}, {question_id}, {answer_id} -- get_score_request()')
 
 
-bot.polling()
+#bot.polling()
 
-"""
+
 # Start bot
 while True:
     try:
@@ -387,4 +387,3 @@ while True:
         conversations = {}
         print(e)
         sleep(5)
-"""
