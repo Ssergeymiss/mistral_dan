@@ -198,6 +198,8 @@ def get_chunks(question):
     question_vect = eval(get_bert_vector(question * 2))
     data['cos_sim'] = data['vector'].apply(
         lambda x: cos_sim(question_vect, eval(x)).item())
+    print(data.head(5))
+    print("zaebis_chanks')
     data = data.sort_values(by='cos_sim', ascending=False).head(50)
     data['score'] = data['message'].apply(lambda x: model_search.predict([(question, x)]))
     
