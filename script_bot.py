@@ -4,9 +4,9 @@
 чтобы сохранялся контекст ответа. И модель видела этот контекст
 
 """
-
 from difflib import SequenceMatcher
 from sentence_transformers.util import cos_sim
+from sentence_transformers import CrossEncoder
 from telebot import types
 from time import sleep
 
@@ -19,7 +19,6 @@ import random
 import requests
 import telebot
 import torch
-
 
 private_vars = {
     "TG_POMOSHNIK_BOT_TOKEN": '6836506185:AAEAvwcZEniKjOdvgsTnqPlJ-qQPMn9i2Mc',
@@ -35,7 +34,6 @@ private_vars = {
     "DB_DATABASE_NAME": "bert",
     "DB_PORT_WRITE": "5000"
 }
-
 
 # Model init
 DEFAULT_MESSAGE_TEMPLATE = "<s>{role}\n{content}</s>"
@@ -70,8 +68,10 @@ class Connection:
     """
     Class for connection to DataBase
     """
+
     def __init__(self):
         # Initializaion
+        print('Start Conncetion')
         self.conn = psycopg2.connect(
             host=private_vars['DB_HOST'],
             port=private_vars['DB_PORT_WRITE'],
@@ -81,11 +81,12 @@ class Connection:
             sslmode="disable"
         )
         self.curr = self.conn.cursor()
-
+        print('Connection succeed')
     def __del__(self):
         # Close connection
         self.curr.close()
         self.conn.close()
+        print('Connection closed')
 
 
 # Class for model init
@@ -116,6 +117,10 @@ class Conversation:
             "content": message
         })
 
+    def pnzo_in_line(self):
+        bot_messages = [msg for msg in self.messages if msg['role'] == 'bot']
+        print(bot_messages)
+
     def get_prompt(self):
         final_text = ""
         for message in self.messages:
@@ -141,6 +146,7 @@ def add_question_answer_to_database(user_id: int, question_id: int, answer_id: i
     row = tuple([user_id, question_id, answer_id, question, answer])
     curr.execute('insert into telegram_bot_messages (user_id, question_msg_id, answer_msg_id, question, answer) \
                     values (%s, %s, %s, %s, %s);', row)
+
     conn.commit()
 
 
@@ -168,6 +174,19 @@ def get_bert_vector(text: str) -> list:
 
     return bert_vector
 
+"""
+def get_chunks(question):
+    c = Connection()
+    conn, curr = c.conn, c.curr
+    curr.execute(f'select * from finder_documents;')
+    cursor_columns = [col.name for col in curr.description]
+    data = pd.DataFrame(curr.fetchall(), columns=cursor_columns)
+
+    question_vect = eval(get_bert_vector(question * 2))
+    data['cos_sim'] = data['vector'].apply(
+        lambda x: cos_sim(question_vect, eval(x)).item())
+    return list(data.sort_values(by='cos_sim', ascending=False).head(5)['message'])
+"""
 
 def get_chunks(question):
     c = Connection()
@@ -176,13 +195,12 @@ def get_chunks(question):
     cursor_columns = [col.name for col in curr.description]
     data = pd.DataFrame(curr.fetchall(), columns=cursor_columns)
 
-    # question_list = list(question)
-    # data['word_sim'] = data['']
-
     question_vect = eval(get_bert_vector(question * 2))
     data['cos_sim'] = data['vector'].apply(
         lambda x: cos_sim(question_vect, eval(x)).item())
-    return list(data.sort_values(by='cos_sim', ascending=False).head(7)['message'])
+    data = data.sort_values(by='cos_sim', ascending=False).head(50)['message']
+    data['score'] = data['message'].apply(lambda x: model_search.predict([(question, x)]))
+    return list(data.sort_values(by='score', ascending=False).head(5)['message'])
 
 
 def get_question_answer_from_database(user_id: int, question_id: int, answer_id: int) -> tuple:
@@ -224,8 +242,50 @@ def get_score_request(question: str, answer: str, relevant: bool):
         print('Response:', response)
 
 
+def script_pomoshnik(user_id: int, question: str, conversation, message_id: int, chat_id: int) -> str:
+    chunks = '\n'.join(get_chunks(question))
+    # 1st generation
+    prompt = f"'{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
+    answer = generate(prompt)
+    bot.edit_message_text(
+        chat_id=chat_id, text='Спрашиваю у отделов...', message_id=message_id)
+
+    # 2nd generation
+    prompt = f"'{answer}\n{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
+    answer = generate(prompt)
+    bot.edit_message_text(
+        chat_id=chat_id, text='Уточняю у директора...', message_id=message_id)
+
+    if check_answer_for_pnzo(answer) or len(answer) == 0:
+        conversation.add_user_message(question)
+        prompt = conversation.get_prompt()
+        output = generate(prompt)
+        text = PNZO_ANSWER + '\n\n' + \
+            'Возможно вам подойдет ответ: ' + output.split('bot')[0]
+        bot.edit_message_text(chat_id=chat_id, text=text,
+                              message_id=message_id)
+    else:
+        conversation.add_user_message(prompt)
+        output = answer
+        bot.edit_message_text(
+            chat_id=chat_id, text=answer, message_id=message_id)
+    return output
+
+
+def script_chat(user_id, question, conversation, message_id, chat_id) -> str:
+    bot.edit_message_text(
+        chat_id=chat_id, text='Спрашиваю у отделов...', message_id=message_id)
+    conversation.add_user_message(question)
+    prompt = conversation.get_prompt()
+    output = generate(prompt)
+    bot.edit_message_text(chat_id=chat_id, text=output, message_id=message_id)
+
+    return output
+
+
 # script classifier
 model_clf = pickle.load(open("model_script_clf.pickle", "rb"))
+model_search = CrossEncoder('cross-encoder/stsb-roberta-large')
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -263,8 +323,8 @@ def start(message):
     bot.send_message(user_id, START_TEXT)
     conversations[user_id] = Conversation()
 
-# Обработчик для каждого нового сообщения
 
+# Обработчик для каждого нового сообщения
 @bot.message_handler(content_types=['text'])
 def handle_question(message):
     user_id = message.from_user.id
@@ -278,36 +338,11 @@ def handle_question(message):
 
     # scipt classification
     if model_clf.predict([question]):
-        # chat script
-        bot.edit_message_text(chat_id=message.chat.id, text='Спрашиваю у отделов...', message_id=msg_log.message_id)
-        conversation.add_user_message(question)
-        prompt = conversation.get_prompt()
-        output = generate(prompt)
-        bot.edit_message_text(chat_id=message.chat.id, text=output, message_id=msg_log.message_id)
-
+        output = script_chat(user_id, question, conversation,
+                             msg_log.message_id, message.chat.id)
     else:
-        # pomoshnik script
-        chunks = '\n'.join(get_chunks(question))
-        prompt = f"'{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
-        answer = generate(prompt)
-
-        bot.edit_message_text(chat_id=message.chat.id, text='Спрашиваю у отделов...', message_id=msg_log.message_id)
-
-        prompt = f"'{answer}\n{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
-        answer = generate(prompt)
-
-        bot.edit_message_text(chat_id=message.chat.id, text='Уточняю у директора...', message_id=msg_log.message_id)
-
-        if check_answer_for_pnzo(answer) or len(answer) == 0:
-            conversation.add_user_message(question)
-            prompt = conversation.get_prompt()
-            output = generate(prompt)
-            text = PNZO_ANSWER + '\n\n' + 'Возможно вам подойдет ответ: ' + output.split('bot')[0]
-            bot.edit_message_text(chat_id=message.chat.id, text=text, message_id=msg_log.message_id)
-        else:
-            conversation.add_user_message(prompt)
-            output = answer
-            bot.edit_message_text(chat_id=message.chat.id, text=answer, message_id=msg_log.message_id)
+        output = script_pomoshnik(
+            user_id, question, conversation, msg_log.message_id, message.chat.id)
 
         # add buttons for scoring
         if not check_answer_for_pnzo(output):
@@ -316,8 +351,10 @@ def handle_question(message):
             callback_button2 = types.InlineKeyboardButton(f'👎', callback_data=f"dislike_{user_id}_{message.message_id}_{msg_log.message_id}")
             keyboard.add(callback_button1, callback_button2)
             bot.send_message(user_id, GET_SCORE_TEXT, reply_markup=keyboard)
+
     add_question_answer_to_database(
         user_id, message.message_id, msg_log.message_id, question, output)
+
     conversation.add_bot_message(output)
 
 
@@ -376,8 +413,7 @@ def handle_button_click(call):
             print(f'Problems with {user_id}, {question_id}, {answer_id} -- get_score_request()')
 
 
-#bot.polling()
-
+# bot.polling()
 
 # Start bot
 while True:
