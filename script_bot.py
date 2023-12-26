@@ -200,7 +200,10 @@ def get_chunks(question):
         lambda x: cos_sim(question_vect, eval(x)).item())
     data = data.sort_values(by='cos_sim', ascending=False).head(50)
     data['score'] = data['message'].apply(lambda x: model_search.predict([(question, x)]))
-    return list(data.sort_values(by='score', ascending=False).head(5)['message'])
+    
+    chunks= list(data.sort_values(by='score', ascending=False).head(5)['message'])
+    print(chunks)
+    return chunks
 
 
 def get_question_answer_from_database(user_id: int, question_id: int, answer_id: int) -> tuple:
