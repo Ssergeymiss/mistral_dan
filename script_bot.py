@@ -198,7 +198,7 @@ def get_chunks(question):
     question_vect = eval(get_bert_vector(question * 2))
     data['cos_sim'] = data['vector'].apply(
         lambda x: cos_sim(question_vect, eval(x)).item())
-    data = data.sort_values(by='cos_sim', ascending=False).head(50)['message']
+    data = data.sort_values(by='cos_sim', ascending=False).head(50)
     data['score'] = data['message'].apply(lambda x: model_search.predict([(question, x)]))
     return list(data.sort_values(by='score', ascending=False).head(5)['message'])
 
