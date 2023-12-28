@@ -282,10 +282,11 @@ def load_model():
 
 @app.route('/get_answer_for_bot', methods=['POST'])
 def get_answer_for_bot():
-    chat = request.json['chat']
-    print(chat)
-    conversation = Conversation()
 
+
+    conversation = Conversation()
+    chat = eval(request.json['chat'])
+    print(chat)
     for message in chat[:-1]:
         if message['role'] == 'user':
             conversation.add_user_message(message['text'])
@@ -315,4 +316,4 @@ def healthcheck():
 
 if __name__ == '__main__':
     load_model()
-    app.run(host='0.0.0.0', port=8081)
+    app.run(host='0.0.0.0', port=8082)
