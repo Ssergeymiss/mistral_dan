@@ -178,7 +178,7 @@ def get_bert_vector(text: str) -> list:
     :return:
     """
     req_json = {'search_string': text}
-    response_json = requests.post(private_vars['URL_VECTORISATION'], json=req_json)
+    response_json = requests.post(URL_VECTORISATION, json=req_json)
     bert_vector = response_json.json()['vector']
 
     return bert_vector
@@ -268,52 +268,44 @@ def script_pomoshnik(question: str, conversation: Conversation) -> Response:
         return Response(question=prompt, answer=answer, is_talking_question=0)
 
 
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-model_clf = None  # Инициализируйте модель, используемую в функциях script_chat и script_pomoshnik
+app = FastAPI()
 
 
-def load_model():
-    global model_clf
-    model_clf = pickle.load(open("model_script_clf.pickle", "rb"))
+@serve.deployment(ray_actor_options={"num_cpus": NUM_CPUS}, route_prefix="/")
+@serve.ingress(app)
+class FastAPIDeployment:
+    def __init__(self):
+        self.model_clf = pickle.load(open("model_script_clf.pickle", "rb"))
+
+    @app.post("/get_answer_for_bot")
+    async def get_answer(self, request: Request) -> Response:
+        conversation = Conversation()
+        chat = eval(request.chat)
+        for message in chat[:-1]:
+            if message['role'] == 'user':
+                conversation.add_user_message(message['text'])
+            elif message['role'] == 'bot':
+                conversation.add_bot_message(message['text'])
+        question = chat[-1]['text']
+        # Check for questions_answers
+        qa_answer = get_answer_from_qa(question)
+        if qa_answer != 'None':
+            chunks = ' '.join(get_chunks(question))
+            prompt = f"'{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
+            conversation.add_user_message(prompt)
+            return Response(question=prompt, answer=qa_answer, is_talking_question=0)
+
+        if self.model_clf.predict([question]):
+            return script_chat(question, conversation)
+        else:
+            return script_pomoshnik(question, conversation)
 
 
-@app.route('/get_answer_for_bot', methods=['POST'])
-def get_answer_for_bot():
+    @app.get("/health", status_code=status.HTTP_200_OK)
+    async def healthcheck(self):
+        return {"status": "ok"}
 
+serve.run(FastAPIDeployment.bind(), host='0.0.0.0', port=8081)
 
-    conversation = Conversation()
-    chat = eval(request.json['chat'])
-    print(chat)
-    for message in chat[:-1]:
-        if message['role'] == 'user':
-            conversation.add_user_message(message['text'])
-        elif message['role'] == 'bot':
-            conversation.add_bot_message(message['text'])
-
-    question = chat[-1]['text']
-
-    # Check for questions_answers
-    qa_answer = get_answer_from_qa(question)
-    if qa_answer != 'None':
-        chunks = ' '.join(get_chunks(question))
-        prompt = f"'{chunks}'\nПо контексту выше, ответь кратко: '{question}'"
-        conversation.add_user_message(prompt)
-        return jsonify(question=prompt, answer=qa_answer, is_talking_question=0)
-
-    if model_clf.predict([question]):
-        return script_chat(question, conversation)
-    else:
-        return script_pomoshnik(question, conversation)
-
-
-@app.route('/health')
-def healthcheck():
-    return jsonify(status="ok")
-
-
-if __name__ == '__main__':
-    load_model()
-    app.run(host='0.0.0.0', port=8083)
+while True:
+    time.sleep(1)
