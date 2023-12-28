@@ -283,6 +283,7 @@ def load_model():
 @app.route('/get_answer_for_bot', methods=['POST'])
 def get_answer_for_bot():
     chat = request.json['chat']
+    print(chat)
     conversation = Conversation()
 
     for message in chat[:-1]:
@@ -313,5 +314,5 @@ def healthcheck():
 
 
 if __name__ == '__main__':
-    load_model() 
+    load_model()
     app.run(host='0.0.0.0', port=8081)
