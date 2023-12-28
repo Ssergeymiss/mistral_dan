@@ -178,7 +178,7 @@ def get_bert_vector(text: str) -> list:
     :return:
     """
     req_json = {'search_string': text}
-    response_json = requests.post(URL_VECTORISATION, json=req_json)
+    response_json = requests.post(private_vars['URL_VECTORISATION'], json=req_json)
     bert_vector = response_json.json()['vector']
 
     return bert_vector
