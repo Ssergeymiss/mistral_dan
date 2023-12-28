@@ -305,7 +305,7 @@ class FastAPIDeployment:
     async def healthcheck(self):
         return {"status": "ok"}
 
-serve.run(FastAPIDeployment.bind(), host='0.0.0.0', port=8085)
+serve.run(FastAPIDeployment.bind())
 
 while True:
     time.sleep(1)
